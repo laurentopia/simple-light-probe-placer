@@ -11,11 +11,12 @@ namespace SimpleLightProbePlacer
     [AddComponentMenu("")]
     public class TransformVolume : MonoBehaviour
     {
-        [SerializeField] private Volume m_volume = new Volume(Vector3.zero, Vector3.one);
+        [SerializeField][HideInInspector]
+        Volume m_volume = new Volume(Vector3.zero, Vector3.one);
 
-        public Volume Volume { get { return m_volume; } set { m_volume = value; } }
-        public Vector3 Origin { get { return m_volume.Origin; } }
-        public Vector3 Size { get { return m_volume.Size; } }
+        public Volume  Volume { get => m_volume; set => m_volume = value; }
+        public Vector3 Origin => m_volume.Origin;
+        public Vector3 Size   => m_volume.Size;
 
         public bool IsInBounds(Vector3[] points)
         {
