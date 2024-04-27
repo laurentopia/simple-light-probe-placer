@@ -1,4 +1,4 @@
-> **This repository has been deprecated.**
+Now removes probes that are inside collider.
 
 # Simple Light Probe Placer
 
