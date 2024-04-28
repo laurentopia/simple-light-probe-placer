@@ -42,7 +42,7 @@ namespace SimpleLightProbePlacer
 		public List<Vector3> GetPositions()
 		{
 			if (needsRefresh || _posList.Count == 0) {
-				_posList     = CreatePositions(m_type);
+				_posList = CreatePositions(m_type);
 				needsRefresh = false;
 				return _posList;
 			} else { return _posList; }
@@ -55,16 +55,16 @@ namespace SimpleLightProbePlacer
 		public static List<Vector3> CreatePositionsFixed(Transform volumeTransform, Vector3 origin, Vector3 size, Vector3 density, LayerMask layer)
 		{
 			var posList = new List<Vector3>();
-			var offset  = origin;
-			var moveX   = size.x / Mathf.FloorToInt(density.x);
-			var moveY   = size.y / Mathf.FloorToInt(density.y);
-			var moveZ   = size.z / Mathf.FloorToInt(density.z);
+			var offset = origin;
+			var stepX = size.x / Mathf.FloorToInt(density.x);
+			var stepY = size.y / Mathf.FloorToInt(density.y);
+			var stepZ = size.z / Mathf.FloorToInt(density.z);
 			offset -= size * 0.5f;
 			for (var x = 0; x <= density.x; x++) {
 				for (var y = 0; y <= density.y; y++) {
 					for (var z = 0; z <= density.z; z++) {
-						var probePos = offset + new Vector3(x * moveX, y * moveY, z * moveZ);
-						if (IsInsideGeometry(probePos, offset, layer)) { continue; }
+						var probePos = offset + new Vector3(x * stepX, y * stepY, z * stepZ);
+						if (IsInsideGeometry(ref probePos, density, layer)) { continue; }
 						probePos = volumeTransform.TransformPoint(probePos);
 						posList.Add(probePos);
 					}
@@ -76,11 +76,11 @@ namespace SimpleLightProbePlacer
 		public static List<Vector3> CreatePositionsFloat(Transform volumeTransform, Vector3 origin, Vector3 size, Vector3 density, LayerMask layer)
 		{
 			var posList = new List<Vector3>();
-			var offset  = origin;
-			var stepX   = Mathf.FloorToInt(size.x / density.x);
-			var stepY   = Mathf.FloorToInt(size.y / density.y);
-			var stepZ   = Mathf.FloorToInt(size.z / density.z);
-			offset   -= size * 0.5f;
+			var offset = origin;
+			var stepX = Mathf.FloorToInt(size.x / density.x);
+			var stepY = Mathf.FloorToInt(size.y / density.y);
+			var stepZ = Mathf.FloorToInt(size.z / density.z);
+			offset -= size * 0.5f;
 			offset.x += (size.x - stepX * density.x) * 0.5f;
 			offset.y += (size.y - stepY * density.y) * 0.5f;
 			offset.z += (size.z - stepZ * density.z) * 0.5f;
@@ -88,7 +88,7 @@ namespace SimpleLightProbePlacer
 				for (var y = 0; y <= stepY; y++) {
 					for (var z = 0; z <= stepZ; z++) {
 						var probePos = offset + new Vector3(x * density.x, y * density.y, z * density.z);
-						if (IsInsideGeometry(probePos, offset, layer)) { continue; }
+						if (IsInsideGeometry(ref probePos, density, layer)) { continue; }
 						probePos = volumeTransform.TransformPoint(probePos);
 						posList.Add(probePos);
 					}
@@ -97,28 +97,28 @@ namespace SimpleLightProbePlacer
 			return posList;
 		}
 
-		public static bool IsInsideGeometry(Vector3 position, Vector3 offset, LayerMask layer)
+		internal static Vector3[] _wiggleDirections = new[] {Vector3.up, Vector3.back, Vector3.forward, Vector3.left, Vector3.right};
+
+		public static bool IsInsideGeometry(ref Vector3 position, Vector3 density, LayerMask layer)
 		{
-			//shoot 5 rays
 			var tmp = Physics.queriesHitBackfaces;
 			Physics.queriesHitBackfaces = true;
-			RaycastHit hit;
-			bool       hitting;
+			bool hitting;
 			hitting = Physics.OverlapSphere(position, .01f, layer).Length > 0;
-
-			// var        up = Physics.Raycast(position, Vector3.up, out hit, offset.y, layer);
-			// hitting = Vector3.Dot(hit.normal, Vector3.up) < 0;
-			// var left = Physics.Raycast(position, Vector3.left, out hit, offset.x, layer);
-			// hitting |= Vector3.Dot(hit.normal, Vector3.left) < 0;
-			// var right = Physics.Raycast(position, Vector3.right, out hit, offset.y, layer);
-			// hitting |= Vector3.Dot(hit.normal, Vector3.right) < 0;
-			// var forward = Physics.Raycast(position, Vector3.forward, out hit, offset.z, layer);
-			// hitting |= Vector3.Dot(hit.normal, Vector3.forward) < 0;
-			// var back = Physics.Raycast(position, Vector3.back, out hit, offset.z, layer);
-			// hitting |= Vector3.Dot(hit.normal, Vector3.back) < 0;
+			if (hitting) {
+				for (var i = 0; i < 5; i++) {
+					var wiggledPosition = position + _wiggleDirections[i] * density.magnitude * .5f;
+					if (Physics.OverlapSphere(wiggledPosition, .01f, layer).Length == 0) {
+						var direction = (position - wiggledPosition).normalized;
+						Physics.Raycast(wiggledPosition, direction, out var hit, density.magnitude, layer);
+						position = hit.point - direction * .1f;
+						hitting = false;
+						break;
+					}
+				}
+			}
 			Physics.queriesHitBackfaces = tmp;
 			return hitting;
-			// return false;
 		}
 	}
 	[CanEditMultipleObjects]
@@ -133,21 +133,21 @@ namespace SimpleLightProbePlacer
 			GUILayout.Space(10);
 			EditorGUILayout.LabelField("Volume", EditorStyles.boldLabel);
 			var origin = EditorGUILayout.Vector3Field("Origin", volume.Origin);
-			var size   = EditorGUILayout.Vector3Field("Size", volume.Size);
+			var size = EditorGUILayout.Vector3Field("Size", volume.Size);
 			GUILayout.Space(10);
 			EditorGUILayout.LabelField("Density", EditorStyles.boldLabel);
-			var   type       = (LightProbeVolumeType) EditorGUILayout.EnumPopup("Density Type", volume.Type);
+			var   type = (LightProbeVolumeType) EditorGUILayout.EnumPopup("Density Type", volume.Type);
 			var   densityMin = volume.Type == LightProbeVolumeType.Fixed ? 1 : 0.1f;
 			float densityMax = volume.Type == LightProbeVolumeType.Fixed ? 100 : 50;
-			var   density    = volume.Density;
+			var   density = volume.Density;
 			density.x = EditorGUILayout.Slider("DensityX", volume.Density.x, densityMin, densityMax);
 			density.y = EditorGUILayout.Slider("DensityY", volume.Density.y, densityMin, densityMax);
 			density.z = EditorGUILayout.Slider("DensityZ", volume.Density.z, densityMin, densityMax);
 			if (EditorGUI.EndChangeCheck() || volume.transform.hasChanged) {
 				Undo.RecordObject(target, "Light Probe Volume changes");
-				volume.Density      = density;
-				volume.Type         = type;
-				volume.Volume       = new Volume(origin, size);
+				volume.Density = density;
+				volume.Type = type;
+				volume.Volume = new Volume(origin, size);
 				volume.needsRefresh = true;
 				EditorUtility.SetDirty(target);
 			}
@@ -156,7 +156,7 @@ namespace SimpleLightProbePlacer
 		void OnSceneGUI()
 		{
 			var lightProbeVolume = (LightProbeVolume) target;
-			var volume           = TransformVolume.EditorVolumeControl(lightProbeVolume, 0.1f, LightProbeVolume.EditorColor);
+			var volume = TransformVolume.EditorVolumeControl(lightProbeVolume, 0.1f, LightProbeVolume.EditorColor);
 			if (volume != lightProbeVolume.Volume) {
 				Undo.RecordObject(target, "Light Probe Volume changes");
 				// lightProbeVolume.needsRefresh = true;
@@ -169,11 +169,11 @@ namespace SimpleLightProbePlacer
 		static void DrawGizmoVolume(LightProbeVolume volume, GizmoType gizmoType)
 		{
 			var color = LightProbeVolume.EditorColor;
-			Gizmos.color  = color;
+			Gizmos.color = color;
 			Gizmos.matrix = Matrix4x4.TRS(volume.transform.position, volume.transform.rotation, Vector3.one);
 			Gizmos.DrawWireCube(volume.Origin, volume.Size);
 			if (gizmoType != (GizmoType.Selected | GizmoType.InSelectionHierarchy | GizmoType.Active)) { return; }
-			color.a      = 0.25f;
+			color.a = 0.25f;
 			Gizmos.color = color;
 			Gizmos.DrawCube(volume.Origin, volume.Size);
 			var probes = volume.GetPositions();
