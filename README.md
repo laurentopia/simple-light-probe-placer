@@ -1,4 +1,4 @@
-Now removes probes that are inside collider.
+Now moves probes that are inside collider.
 
 # Simple Light Probe Placer
 
