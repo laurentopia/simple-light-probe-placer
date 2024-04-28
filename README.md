@@ -31,7 +31,8 @@ on which you can read below.
 
 | Version | Description |
 | --- | --- |
-| **1.0.12** | Update to Unity 5.6.2 (This is a last update). |
+| **1.0.13** | Now moves the probes if it's inside a collider of 'layer'. |
+| **1.0.12** | Update to Unity 5.6.2 (This *was* the last update). |
 | **1.0.11** |  Small fix on MergeClosestPositions, for preventing error. |
 | **1.0.10** | Some fixes. |
 | **1.0.9.1** |  |
