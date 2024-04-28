@@ -1,4 +1,4 @@
-Now moves probes that are inside collider.
+Now tries to wiggle probes out of colliders.
 
 # Simple Light Probe Placer
 
