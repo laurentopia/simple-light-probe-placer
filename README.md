@@ -1,4 +1,4 @@
-Now tries to wiggle probes out of colliders.
+Now tries to wiggle probes out of colliders. Need to set *Layers* and also objects need closed colliders, open mesh colliders don't work.
 
 # Simple Light Probe Placer
 
